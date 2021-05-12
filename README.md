@@ -1,7 +1,7 @@
 # AISaturdays.Donostia-Distracted-Driver-Detection
 Proyecto Práctico - Curso Redes Neuronales - Henry Corazza - Imanol Areizaga
 
-![alt tag](Raw-Data/img/logo1.png)
+![alt tag](Script/Raw-Data/img/logo1.png)
 
 # Proyecto final AI Saturdays Euskadi 2021
 
