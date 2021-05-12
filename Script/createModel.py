@@ -1,6 +1,5 @@
 import tensorflow as tf
 import numpy as np
-import matplotlib.pyplot as plt
 from tensorflow.keras.applications.efficientnet import EfficientNetB0, preprocess_input, decode_predictions
 from PIL import Image
 from sklearn.model_selection import train_test_split
@@ -8,23 +7,24 @@ from sklearn.model_selection import train_test_split
 from pathlib import Path
 from typing import Tuple
 import shutil
+from sklearn.metrics import roc_curve
+import matplotlib.pyplot as plt
 
 SEED = 1534
 
-data_augmentation = tf.keras.Sequential(
-    [
-        tf.keras.layers.experimental.preprocessing.RandomContrast(0.1, seed=SEED),
-        tf.keras.layers.experimental.preprocessing.RandomFlip("horizontal", seed=SEED),
-        tf.keras.layers.experimental.preprocessing.RandomZoom((0.0, 0.3), seed=SEED),
-        tf.keras.layers.experimental.preprocessing.RandomRotation(0.05, seed=SEED),
-    ]
-)
+data_augmentation = tf.keras.Sequential([
+    tf.keras.layers.experimental.preprocessing.RandomContrast(0.1, seed=SEED),
+    tf.keras.layers.experimental.preprocessing.RandomFlip("horizontal", seed=SEED),
+    tf.keras.layers.experimental.preprocessing.RandomZoom((0.0, 0.3), seed=SEED),
+    tf.keras.layers.experimental.preprocessing.RandomRotation(0.05, seed=SEED), ])
 
 
 class CnnRes:
     def __init__(self):
         self.train_directory = './Raw-Data/state-farm-distracted-driver-detection/imgs/train'
-        self.input_image_shape = (224, 224, 3)  # Height, Wdith, Color channels
+        self.test_directory = "./test_data"
+        self.test_data = "./"
+        self.input_image_shape = (224, 224, 3)  # Height, Width, Color channels
 
     def run(self):
         train_ds = self.get_data('training')
@@ -34,6 +34,8 @@ class CnnRes:
         self.plot_images(images_batch, labels_batch)
 
         self.plot_images(data_augmentation(images_batch), labels_batch)
+        base_model = self.load_base_model()
+        self.create_model(base_model)
 
     def get_data(self, subset):
         return tf.keras.preprocessing.image_dataset_from_directory(
@@ -110,7 +112,8 @@ class CnnRes:
             loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
             metrics=[tf.keras.metrics.BinaryAccuracy()], )
 
-    def fine_tuning(self, base_model, model, train_ds):
+    @staticmethod
+    def fine_tuning(base_model, model, train_ds, valid_ds):
         base_model.trainable = True
         model.summary()
         model.compile(
@@ -121,7 +124,64 @@ class CnnRes:
         epochs = 10
         fine_tune_hist = model.fit(train_ds, epochs=epochs, validation_data=valid_ds)
         model.save("models/efficientnet_gvd.h5")
-        model = tf.keras.models.load_model('models/efficientnet_gvd.h5')
+        model = tf.keras.models.load_model('./models/efficientnet_gvd.h5')
+
+    def testing(self, model):
+        test_ds = tf.keras.preprocessing.image_dataset_from_directory(
+            self.test_directory,
+            labels="inferred",
+            label_mode="int",
+            class_names=None,
+            color_mode="rgb",
+            batch_size=40,
+            image_size=(224, 224),
+            shuffle=False,
+            seed=SEED,
+            validation_split=None,
+            subset=None,
+            interpolation="bilinear",
+            follow_links=False,
+        )
+        images_batch, labels_batch = list(test_ds.take(1)).pop()
+        self.plot_images(images_batch, labels_batch, num_columns=5)
+        score, acc = model.evaluate(test_ds)
+
+    @staticmethod
+    def image_prediction(model, image_path):
+        image = tf.keras.preprocessing.image.load_img(image_path, target_size=(224, 224))
+        x = tf.keras.preprocessing.image.img_to_array(image)
+        x = np.expand_dims(x, axis=0)
+        # x = preprocessing(x)
+
+        model.trainable = False
+        prediction = model.predict(x)
+        prediction_score = prediction[0][0]
+        prediction_proba = tf.math.sigmoid(prediction_score)
+        predicted_class = "Gandalf" if prediction_proba > 0.5 else "Dumbledore"
+        return predicted_class, prediction_proba
+
+    def tet(self, model):
+        for image_path in Path("test_data/dumbledore/").iterdir():
+            if "jpg" in image_path.name:
+                predicted_class, prediction_proba = self.image_prediction(model, image_path)
+                print(f"Predicted: {predicted_class} with probability {prediction_proba:.3f}")
+
+    def ROC(self, model, test_ds):
+        y_true = []
+        y_pred = []
+        for image_path in Path("test_data/gandalf/").iterdir():
+            if "jpg" in image_path.name:
+                cl, proba = self.image_prediction(model, image_path)
+                y_pred.append(proba.numpy())
+                y_true.append(1)
+        for image_path in Path("test_data/dumbledore/").iterdir():
+            if "jpg" in image_path.name:
+                cl, proba = self.image_prediction(model, image_path)
+                y_pred.append(proba.numpy())
+                y_true.append(0)
+        print(y_pred)
+        fpr, tpr, thr = roc_curve(y_true, y_pred)
+        plt.plot(fpr, tpr)
 
 
 if __name__ == '__main__':
