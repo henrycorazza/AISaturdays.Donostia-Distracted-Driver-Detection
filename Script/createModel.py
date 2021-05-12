@@ -165,7 +165,7 @@ class CnnRes:
             if "jpg" in image_path.name:
                 predicted_class, prediction_proba = self.image_prediction(model, image_path)
                 print(f"Predicted: {predicted_class} with probability {prediction_proba:.3f}")
- 
+
     def ROC(self, model, test_ds):
         y_true = []
         y_pred = []
