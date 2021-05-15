@@ -32,7 +32,7 @@ def img_df(image_path, shape):
     return img_array
 
 
-path_train_data = './Raw-Data/state-farm-distracted-driver-detection/imgs/train'
+path_train_data = 'Raw-Data/train'
 classes = os.listdir(path_train_data)
 numero_classes = len(classes)
 image_dimensions = (32, 32, 3)

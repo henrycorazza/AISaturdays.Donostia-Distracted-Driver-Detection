@@ -35,7 +35,8 @@ class CnnRes:
 
         self.plot_images(data_augmentation(images_batch), labels_batch)
         base_model = self.load_base_model()
-        self.create_model(base_model)
+        base_model, model = self.create_model(base_model)
+        self.fine_tuning(base_model, model, train_ds, valid_ds)
 
     def get_data(self, subset):
         return tf.keras.preprocessing.image_dataset_from_directory(
@@ -111,6 +112,7 @@ class CnnRes:
             optimizer=tf.keras.optimizers.Adam(),
             loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
             metrics=[tf.keras.metrics.BinaryAccuracy()], )
+        return base_model, model
 
     @staticmethod
     def fine_tuning(base_model, model, train_ds, valid_ds):
