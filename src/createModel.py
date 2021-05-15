@@ -21,9 +21,8 @@ data_augmentation = tf.keras.Sequential([
 
 class CnnRes:
     def __init__(self):
-        self.train_directory = './Raw-Data/state-farm-distracted-driver-detection/imgs/train'
-        self.test_directory = "./test_data"
-        self.test_data = "./"
+        self.train_directory = './img/train'
+        self.test_directory = "./img/test"
         self.input_image_shape = (224, 224, 3)  # Height, Width, Color channels
 
     def run(self):
